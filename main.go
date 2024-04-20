@@ -5,26 +5,46 @@ import (
 	"fmt"
 	"path/filepath"
 	"shop-reviews/pkg/amazon"
+	"shop-reviews/pkg/auth"
 	"strings"
 )
 
 var (
-	path  = ""
-	host  = ""
-	pid   = ""
-	token = ""
+	path     = ""
+	host     = ""
+	pid      = ""
+	token    = ""
+	email    = ""
+	password = ""
 )
 
 func init() {
 	flag.StringVar(&path, "path", "", "file path")
-	flag.StringVar(&host, "host", "", "host")
+	flag.StringVar(&host, "host", "http://127.0.0.1:5000", "host")
 	flag.StringVar(&pid, "pid", "", "pid")
 	flag.StringVar(&token, "token", "", "token")
+	flag.StringVar(&email, "email", "", "email")
+	flag.StringVar(&password, "password", "", "password")
 	flag.Parse()
 }
 
 func main() {
 	fmt.Println("path:", path, "host:", host, "pid:", pid)
+	if token == "" {
+		token2, err := auth.AuthenticateUser(host, email, password)
+		if err != nil {
+			fmt.Println("error:", err)
+			return
+		}
+		token = token2
+		fmt.Printf("token:%v\n", token2)
+	}
+
+	reviews2, err2 := amazon.GetLatestProductReviews(host, pid)
+	if err2 != nil {
+		fmt.Println("error:", err2)
+		return
+	}
 
 	// 判断文件后缀名
 	ext := filepath.Ext(path)
@@ -45,13 +65,15 @@ func main() {
 		return
 	}
 
-	for _, review := range reviews {
+	//去重
+	newReviews := amazon.SubtractReviews(reviews, reviews2)
+	for _, review := range newReviews {
 		fmt.Println("review：", review.Comment)
 		fmt.Println("name：", review.Name)
 		fmt.Println("rating：", review.Rating)
 	}
 
-	for _, req := range reviews {
+	for _, req := range newReviews {
 		if err := amazon.CreateReviews(host, token, *req); err != nil {
 			fmt.Println("error:", err)
 			return

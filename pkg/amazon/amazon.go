@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tealeg/xlsx"
+	"io/ioutil"
 	"net/http"
 	"os"
 )
@@ -15,6 +16,16 @@ type Review struct {
 	Rating    string `json:"rating"`
 	Comment   string `json:"comment"`
 	Name      string `json:"name"`
+}
+
+type ReviewResponse struct {
+	Id        string `json:"_id"`
+	Name      string `json:"name"`
+	Comment   string `json:"comment"`
+	User      string `json:"user"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
+	Rating    int    `json:"rating"`
 }
 
 func GenerateReviews(reviews []string, productId string, rating string) []*Review {
@@ -181,4 +192,64 @@ func LoadCSVFile(fileName, productId string) ([]*Review, error) {
 	}
 
 	return result, nil
+}
+
+func GetLatestProductReviews(host, id string) ([]*Review, error) {
+	url := fmt.Sprintf("%s/api/products/%s/latest-reviews", host, id)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var reviews []*ReviewResponse
+	err = json.Unmarshal(body, &reviews)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*Review
+	for _, review := range reviews {
+		result = append(result, &Review{
+			ProductId: id,
+			Rating:    fmt.Sprintf("%d", review.Rating),
+			Comment:   review.Comment,
+			Name:      review.Name,
+		})
+	}
+	return result, nil
+}
+
+// 切片1减去切片2的操作
+func SubtractReviews(reviews1, reviews2 []*Review) []*Review {
+	// 创建一个 map 用于存储切片2中的评论
+	reviews2Map := make(map[string]struct{})
+	for _, review := range reviews2 {
+		reviews2Map[review.Comment] = struct{}{}
+	}
+
+	// 创建一个新的切片用于存储切片1减去切片2后的评论
+	var subtractedReviews []*Review
+
+	// 遍历切片1，并检查其评论是否在切片2中存在
+	for _, review := range reviews1 {
+		if _, ok := reviews2Map[review.Comment]; !ok {
+			// 如果评论不存在于切片2中，则将其保留在结果中
+			subtractedReviews = append(subtractedReviews, review)
+		}
+	}
+
+	return subtractedReviews
 }
