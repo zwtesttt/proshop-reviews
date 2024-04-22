@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/urfave/cli/v2"
+	"log"
 	"os/exec"
 	"path/filepath"
 	"shop-reviews/pkg/amazon"
@@ -118,7 +119,6 @@ func Insert(c *cli.Context) error {
 		}
 		token = token2
 	}
-	fmt.Println("获取token", token)
 
 	reviews2, err2 := amazon.GetLatestProductReviews(host, pid)
 	if err2 != nil {
@@ -153,10 +153,10 @@ func Insert(c *cli.Context) error {
 		fmt.Println("rating：", review.Rating)
 	}
 
-	fmt.Println("新增评论：", len(newReviews))
+	log.Println(pid, "新增评论：", len(newReviews))
 	for _, req := range newReviews {
 		if err := amazon.CreateReviews(host, token, *req); err != nil {
-			fmt.Println("error:", err)
+			log.Fatalln("error:", err)
 			return err
 		}
 	}
@@ -216,7 +216,6 @@ func Update(c *cli.Context) error {
 		host = "http://127.0.0.1:5000"
 	}
 	err = insertContext.Set("host", host)
-	fmt.Println("host1:", host)
 	err = Insert(insertContext)
 	if err != nil {
 		return err
