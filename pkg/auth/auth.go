@@ -22,6 +22,7 @@ func AuthenticateUser(host, email, password string) (string, error) {
 		return "", err
 	}
 
+	fmt.Println(string(jsonData))
 	// 创建 HTTP 请求
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
